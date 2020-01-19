@@ -212,10 +212,10 @@ fun mk_prec_matrix G = let
       *)
 
   val rule_elements = term_grammar.rule_elements o #elements
-  val complained_this_iteration = ref false
+  val complained_this_iteration = Uref.new false
   fun insert_bail k =
       (Polyhash.insert matrix (k, PM_LESS MS_Multi);
-       complained_this_iteration := true;
+       let open Uref in complained_this_iteration := true end;
        if not (!complained_already) andalso
           (!Globals.interactive orelse !ambigrm = 2)
        then let
@@ -507,7 +507,7 @@ in
   insert_rhs_relns () ;
   insert_lhs_relns () ;
   apply_them_all process_rule Grules;
-  if (not (!complained_this_iteration)) then complained_already := false
+  if (not (Uref.!complained_this_iteration)) then complained_already := false
   else ();
   matrix
 end
@@ -807,6 +807,7 @@ fun parse_term (G : grammar) (typeparser : term qbuf -> Pretype.pretype) = let
         | Antiquote _ => (Id, locn, SOME tt)
         | Numeral _ => (Id, locn, SOME tt)
         | Fraction _ => (Id, locn, SOME tt)
+        | StrLit _ => (Id, locn, SOME tt)
         | QIdent _ => (Id, locn, SOME tt)
       end
     | SOME (tt as PreType ty,locn) => (TypeTok, locn, SOME tt)
@@ -1087,6 +1088,8 @@ fun parse_term (G : grammar) (typeparser : term qbuf -> Pretype.pretype) = let
                    NUMERAL  = (QIDENT ("arithmetic", "NUMERAL"),locn),
                    BIT1     = (QIDENT ("arithmetic", "BIT1")  ,locn),
                    BIT2     = (QIDENT ("arithmetic", "BIT2")  ,locn)}
+          val mk_string = Literal.mk_stringlit_term
+          val mk_char = Literal.mk_charlit_term
           fun inject_np NONE t = t
             | inject_np (SOME s) t = (COMB((VAR s,locn), t),locn)
         in
@@ -1163,6 +1166,15 @@ fun parse_term (G : grammar) (typeparser : term qbuf -> Pretype.pretype) = let
                     | (VSRES_VS, _) =>
                         (NonTermVS [(SIMPLE (token_string tt),locn)],locn)
                     | (_, QIdent x) => (NonTerminal (QIDENT x),locn)
+                    | (_, StrLit{ldelim,contents}) =>
+                      if ldelim = "#\"" then
+                        (NonTerminal (AQ (mk_char (String.sub(contents,0)))),
+                         locn)
+                      else
+                        liftlocn NonTerminal
+                                 (inject_np
+                                    (SOME (mk_stringinjn_name ldelim))
+                                    (AQ (mk_string contents), locn))
                     | _ => (NonTerminal (VAR (token_string tt)),locn)
               (* tt is not an antiquote because of the wider context;
                  antiquotes are dealt with in the wider case statement

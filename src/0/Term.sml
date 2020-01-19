@@ -40,9 +40,6 @@ in
 end
 fun del_segment s = KernelSig.del_segment(termsig, s)
 
-
-
-
 (*---------------------------------------------------------------------------*
  * Builtin constants. These are in every HOL signature, and it is            *
  * convenient to nail them down here.                                        *
@@ -388,7 +385,15 @@ fun mk_primed_var (Name,Ty) =
  * polymorphic.                                                              *
  *---------------------------------------------------------------------------*)
 
-val decls = map (Const o #2) o KernelSig.listName termsig
+fun decls nm =
+    let
+      fun f ({Name,...}, info as (_, ty), A) =
+          if nm = Name andalso Type.uptodate_type (to_hol_type ty) then
+            Const info :: A
+          else A
+    in
+      KernelSig.foldl f [] termsig
+    end
 
 fun prim_mk_const (knm as {Name,Thy}) =
  case KernelSig.peek(termsig, knm)
@@ -429,8 +434,22 @@ fun first_decl fname Name =
 val current_const = first_decl "current_const";
 fun mk_const(Name,Ty) = create_const"mk_const" (first_decl"mk_const" Name) Ty;
 
-fun all_consts() = map (Const o #2) (KernelSig.listItems termsig)
-fun thy_consts s = map (Const o #2) (KernelSig.listThy termsig s)
+fun all_consts() =
+    let
+      fun buildAll (_, cinfo as (_,v), A) =
+          if Type.uptodate_type (to_hol_type v) then Const cinfo :: A else A
+    in
+      KernelSig.foldl buildAll [] termsig
+    end
+fun thy_consts s =
+    let
+      fun buildthy ({Thy,...}, cinfo as (_, v), A) =
+          if Thy = s andalso Type.uptodate_type (to_hol_type v) then
+            Const cinfo :: A
+          else A
+    in
+      KernelSig.foldl buildthy [] termsig
+    end
 
 fun same_const (Const(id1,_)) (Const(id2,_)) = id1 = id2
   | same_const _ _ = false
@@ -990,7 +1009,17 @@ val app     = "@"
 val lam     = "|"
 val dollar  = "$"
 val percent = "%"
-datatype pptask = ppTM of term | ppLAM | ppAPP of int
+
+fun strip_comb t =
+    let fun recurse t A =
+            case t of
+                Comb(f,x) => recurse f (x::A)
+              | _ => (t, A)
+    in
+      recurse t []
+    end
+
+datatype pptask = ppTM of term | ppLAM | ppAPP of int | ppS of string
 fun pp_raw_term index tm = let
   fun mkAPP [] = [ppAPP 1]
     | mkAPP (ppAPP n :: rest) = ppAPP (n + 1) :: rest
@@ -1000,8 +1029,26 @@ fun pp_raw_term index tm = let
           [] => String.concat (List.rev acc)
         | ppTM (Abs(Bvar, Body)) :: rest =>
             pp acc (ppTM Bvar :: ppTM Body :: ppLAM :: rest)
-        | ppTM (Comb(Rator, Rand)) :: rest =>
-            pp acc (ppTM Rator :: ppTM Rand :: mkAPP rest)
+        | ppTM (t as Comb(Rator, Rand)) :: rest =>
+          let
+            val (f, args) = strip_comb t
+          in
+            if is_abs f then
+              pp acc (ppTM Rator :: ppTM Rand :: mkAPP rest)
+            else
+              let
+                val (letter1,letter2,i) = case f of Bv i => ("u", "b", i)
+                                                  | _ => ("U", "B", index f)
+              in
+                case args of
+                    [x] => pp acc (ppTM x :: ppS (letter1 ^ Int.toString i) ::
+                                   rest)
+                  | [x,y] =>
+                    pp acc (ppTM x::ppTM y::
+                            ppS (letter2 ^ Int.toString i)::rest)
+                  | _ => pp acc (ppTM Rator :: ppTM Rand :: mkAPP rest)
+              end
+          end
         | ppTM (Bv i) :: rest =>
             pp (dollar ^ Int.toString i :: acc) rest
         | ppTM a :: rest =>
@@ -1009,6 +1056,7 @@ fun pp_raw_term index tm = let
         | ppLAM :: rest => pp (lam :: acc) rest
         | ppAPP n :: rest =>
             pp (app ^ (if n = 1 then "" else Int.toString n) :: acc) rest
+        | ppS s :: rest =>  pp (s :: acc) rest
 in
   pp [] [ppTM tm]
 end
@@ -1025,7 +1073,11 @@ datatype lexeme
    = app of int
    | lamb
    | ident of int
-   | bvar  of int;
+   | bvar  of int
+   | BV1 of int
+   | BV2 of int
+   | I1 of int
+   | I2 of int
 
 local val numeric = Char.contains "0123456789"
 in
@@ -1047,6 +1099,10 @@ fun lexer ss1 =
         #"|" => SOME(lamb,  ss2)
       | #"%"  => let val (n,ss3) = take_numb ss2 in SOME(ident n, ss3) end
       | #"$"  => let val (n,ss3) = take_numb ss2 in SOME(bvar n,  ss3) end
+      | #"U"  => let val (n,ss3) = take_numb ss2 in SOME(I1 n,  ss3) end
+      | #"u"  => let val (n,ss3) = take_numb ss2 in SOME(BV1 n,  ss3) end
+      | #"B"  => let val (n,ss3) = take_numb ss2 in SOME(I2 n,  ss3) end
+      | #"b"  => let val (n,ss3) = take_numb ss2 in SOME(BV2 n,  ss3) end
       | #"@" =>
         (let val (n,ss3) = take_numb ss2 in SOME(app n, ss3) end
          handle HOL_ERR _ => SOME (app 1, ss2))
@@ -1060,6 +1116,12 @@ fun read_raw tmv = let
         (_, SOME (bvar n,  rst)) => parse (Bv n::stk,rst)
       | (_, SOME (ident n, rst)) => parse (index n::stk,rst)
       | (stk, SOME (app n, rst)) => doapps n stk rst
+      | (t::stk, SOME (I1 n, rst)) => parse (Comb(index n, t) :: stk, rst)
+      | (t::stk, SOME (BV1 n, rst)) => parse (Comb(Bv n, t) :: stk, rst)
+      | (t2::t1::stk, SOME (I2 n, rst)) =>
+          parse (Comb(Comb(index n, t1), t2) :: stk, rst)
+      | (t2::t1::stk, SOME (BV2 n, rst)) =>
+          parse (Comb(Comb(Bv n, t1), t2) :: stk, rst)
       | (bd::bv::stk, SOME(lam,rst)) => parse (Abs(bv,bd)::stk, rst)
       | (_, SOME(lam, _)) => raise ERR "read_raw" "lam: small stack"
       | ([tm], NONE) => tm

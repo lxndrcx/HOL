@@ -2,6 +2,8 @@ val _ = PolyML.Compiler.prompt1:="";
 val _ = PolyML.Compiler.prompt2:="";
 val _ = PolyML.print_depth 0;
 
+use "../Holmake/Systeml.sig";
+use "../../tools-poly/Holmake/Systeml.sml";
 use "../Holmake/QuoteFilter.sml";
 open OS.Process
 
@@ -54,7 +56,7 @@ fun main() = let
 
   fun loop() =
     let
-      val lexer = QuoteFilter.makeLexer (read_from_stream instream) state
+      val lexer = #2 o QuoteFilter.makeLexer (read_from_stream instream) state
       fun coreloop () =
         case lexer() of
             "" => ()

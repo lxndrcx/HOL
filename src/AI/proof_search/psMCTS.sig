@@ -3,63 +3,74 @@ sig
 
   include Abbrev
 
+  (* outcome *)
   datatype status = Undecided | Win | Lose
 
-  (* Debug *)
-  val string_of_status : status -> string
-
-  (* Globals *)
-  val ignorestatus_flag : bool ref
-
-  (* 'a is the representation of a board *)
-  type 'a sit = bool * 'a
-
-  (* ''b is the representation of a move *)
-  type 'b choice = (('b * real) * int list)
-
+  (* search tree: 'a is a board position, 'b is a move *)
+  type id = int list
+  val id_compare : id * id -> order
+  type 'b pol = (('b * real) * id) list
   type ('a,'b) node =
-  {
-    pol   : 'b choice list,
-    sit   : 'a sit,
-    sum   : real,
-    vis   : real,
+    {
+    pol : 'b pol,
+    value : real,
+    board : 'a,
+    sum : real,
+    vis : real,
     status : status
-  }
+    }
+  type ('a,'b) tree = (id, ('a,'b) node) Redblackmap.dict
 
-  type ('a,'b) tree = (int list, ('a,'b) node) Redblackmap.dict
+  (* dirichlet noise *)
+  val gamma_distrib : real -> (real * real) list
+  val gamma_noise_gen : real -> (unit -> real)
 
   (* search function *)
-  val starttree_of :
-    real ->
-    ('a sit -> real * ('b * real) list) ->
-    ('a sit -> status) ->
-    'a sit ->
-    ('a,'b) tree
+  type ('a,'b) game =
+    {
+    board_compare : 'a * 'a -> order,
+    string_of_board : 'a -> string,
+    movel: 'b list,
+    move_compare : 'b * 'b -> order,
+    string_of_move : 'b -> string,
+    status_of : 'a -> status,
+    available_move : 'a -> 'b -> bool,
+    apply_move : ('b -> 'a -> 'a)
+    }
 
-  val mcts :
-    (int * real) ->
-    ('a sit -> real * ('b * real) list) ->
-    ('a sit -> status) ->
-    ('b -> 'a sit -> 'a sit) ->
-    ('a,'b) tree ->
-    ('a,'b) tree
+  type ('a,'b) player = 'a -> real * ('b * real) list
+  val uniform_player : ('a,'b) game -> ('a,'b) player
 
-  (* restart *)
-  val cut_tree : ('a,'b) tree -> int list -> ('a,'b) tree
+  type mcts_param =
+    {
+    nsim : int,
+    stopatwin_flag : bool,
+    decay : real,
+    explo_coeff : real,
+    noise_root : bool,
+    noise_all : bool,
+    noise_coeff : real,
+    noise_gen : unit -> real
+    }
+
+  type ('a,'b) mcts_obj =
+    {
+    mcts_param : mcts_param,
+    game : ('a,'b) game,
+    player : ('a,'b) player
+    }
+
+  val starttree_of : ('a,'b) mcts_obj -> 'a -> ('a,'b) tree
+  val mcts : ('a,'b) mcts_obj -> ('a,'b) tree -> ('a,'b) tree
 
   (* statistics *)
-  val backuptime : real ref
-  val selecttime : real ref
-  datatype wintree = Wleaf of int list | Wnode of (int list * wintree list)
-  val wtree_of : ('a,'b) tree -> int list -> wintree
-  val root_variation : ('a,'b) tree -> (int list) list
+  val mostexplored_path : ('a,'b) tree -> id -> id list
+  val max_depth : ('a,'b) tree -> id -> int
+  val trace_win : ('a -> status) -> ('a,'b) tree -> id -> ('a,'b) node list
 
-  (* constructing a training example *)
-  val move_of_cid : ('a,'b) node -> int list -> 'b
-  val eval_example : ('a,'b) tree -> int list -> real
-  val poli_example : ('a,'b) tree -> int list -> real list option
-
-  (* choosing a big step *)
-  val select_bigstep : ('a,'b) tree -> int list -> int list option
+  (* toy example *)
+  type toy_board = (int * int)
+  datatype toy_move = Incr | Decr
+  val toy_game : (toy_board,toy_move) game
 
 end

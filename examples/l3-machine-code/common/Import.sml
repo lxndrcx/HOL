@@ -143,7 +143,7 @@ val myDatatype =
        Datatype.astHol_datatype
    end
 
-val l3_big_record_size = 28 (* HOL default is 20 *)
+val l3_big_record_size = 28
 
 (* Record type *)
 fun Record (n, l) =
@@ -151,12 +151,10 @@ fun Record (n, l) =
        then Feedback.HOL_WARNING "Import" "Record"
               ("Defining big record type; size " ^ Int.toString (List.length l))
      else ()
-   ; Lib.with_flag (Datatype.big_record_size, l3_big_record_size)
-       myDatatype [(n, ParseDatatype.Record l)]
+   ; myDatatype [(n, ParseDatatype.Record l)]
    )
 
 fun NoBigRecord (n, l) =
-  Lib.with_flag (Datatype.big_record_size, List.length l + 1)
     myDatatype [(n, ParseDatatype.Record l)]
 
 (* Algebraic type *)
@@ -854,17 +852,13 @@ local
    end
 
    fun mk_from_bool (x as (tm, a, b)) =
-      if tm = boolSyntax.T
-         then a
-      else if tm = boolSyntax.F
-         then b
+      if Teq tm then a
+      else if Feq tm then b
       else boolSyntax.mk_cond x
 
    fun mk_word_from_bool (tm, ty) =
-      if tm = boolSyntax.T
-         then mk_word1 ty
-      else if tm = boolSyntax.F
-         then mk_word0 ty
+      if Teq tm then mk_word1 ty
+      else if Feq tm then mk_word0 ty
       else bitstringSyntax.mk_v2w
              (listSyntax.mk_list ([tm], Type.bool),
               wordsSyntax.dest_word_type ty)
@@ -1237,7 +1231,7 @@ fun Def (s, a, b) =
    let
       val ty = Type.--> (Term.type_of a, Term.type_of b)
       val c = Term.mk_var (s, ty)
-      val isrec = (HolKernel.find_term (Lib.equal c) b; true)
+      val isrec = (HolKernel.find_term (aconv c) b; true)
                   handle HOL_ERR _ => false
       val def = if isrec andalso Term.is_abs b
                    then let

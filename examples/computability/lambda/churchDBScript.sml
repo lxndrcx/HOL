@@ -494,24 +494,6 @@ val cbnf_behaviour = store_thm(
   ASM_SIMP_TAC (bsrw_ss()) [termrec_behaviour, cand_behaviour,
                             cis_abs_behaviour, cnot_behaviour]);
 
-val wh_S = store_thm(
-  "wh_S",
-  ``S @@ f @@ g @@ x -w->* f @@ x @@ (g @@ x)``,
-  REWRITE_TAC [chap2Theory.S_def] THEN unvarify_tac whstar_substitutive THEN
-  ASM_SIMP_TAC (whfy (srw_ss())) []);
-
-val wh_K = store_thm(
-  "wh_K",
-  ``K @@ x @@ y -w->* x``,
-  REWRITE_TAC [chap2Theory.K_def] THEN unvarify_tac whstar_substitutive THEN
-  ASM_SIMP_TAC (whfy (srw_ss())) []);
-
-val wh_B = store_thm(
-  "wh_B",
-  ``B @@ f @@ g @@ x -w->* f @@ (g @@ x)``,
-  unvarify_tac whstar_substitutive THEN
-  SIMP_TAC (whfy(srw_ss())) [chap2Theory.B_def, wh_S, wh_K]);
-
 val wh_cdV = store_thm(
   "wh_cdV",
   ``cdV @@ x @@ v @@ c @@ a -w->* v @@ x``,
@@ -584,7 +566,7 @@ val wh_cbnf = store_thm(
     by METIS_TAC [normstar_to_abs_wstar] THEN
   ASM_SIMP_TAC (whfy (srw_ss())) [] THEN
   POP_ASSUM MP_TAC THEN NTAC 8 (POP_ASSUM (K ALL_TAC)) THEN
-  REPEAT (FIRST_X_ASSUM (fn th => if mem ``M:term`` (free_vars (concl th)) then
+  REPEAT (FIRST_X_ASSUM (fn th => if ``M:term`` IN FVs (concl th) then
                                     ALL_TAC
                                   else NO_TAC)) THEN
   Q_TAC SUFF_TAC

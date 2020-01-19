@@ -108,7 +108,7 @@ let
    val t1 = pairSyntax.mk_fst v;
    val t2 = pairSyntax.mk_snd v;
 
-   val do_split = not (null (find_terms (fn t' => (t' = t1) orelse (t' = t2)) t))
+   val do_split = not (null (find_terms (fn t' => t' ~~ t1 orelse t' ~~ t2) t))
 in
    if do_split then (SOME (enumerate_pair depth_split v)) else NONE
 end;
@@ -122,7 +122,7 @@ local
    let
       val (b,v') = dest_comb t;
    in
-      (v = v') andalso (pairSyntax.is_pabs b)
+      v ~~ v' andalso pairSyntax.is_pabs b
    end handle HOL_ERR _ => false;
 in
 
@@ -331,15 +331,16 @@ val t = ``r1.field1``
 fun QUANT_INSTANTIATE_HEURISTIC___RECORDS do_rewrites P sys v t =
 let
    (*check whether something should be done*)
-   val v_info = case TypeBase.fetch (type_of v) of NONE   => raise QUANT_INSTANTIATE_HEURISTIC___no_guess_exp
-                                                 | SOME x => x
+   val v_info = case TypeBase.fetch (type_of v) of
+                    NONE   => raise QUANT_INSTANTIATE_HEURISTIC___no_guess_exp
+                  | SOME x => x
    val _ = if null (TypeBasePure.fields_of v_info) orelse not (P v t) then
               raise QUANT_INSTANTIATE_HEURISTIC___no_guess_exp else ()
    val (thyname,typename) = TypeBasePure.ty_name_of v_info
 
    val vars = let
       val (v_name,_) = dest_var v
-      fun mk_new_var (s, ty) = mk_var (s, ty);
+      fun mk_new_var (s, {ty,...}) = mk_var (s, ty);
       in
          map mk_new_var (TypeBasePure.fields_of v_info)
       end;

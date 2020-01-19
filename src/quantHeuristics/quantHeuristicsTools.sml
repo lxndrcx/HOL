@@ -104,7 +104,7 @@ let
    val (p, a) = dest_imp_only t;
 in
    if (is_conj p) then (AND_IMP_ELIM_CONV THENC LIST_AND_IMP_ELIM_CONV) t else
-   if (p = T) then (TRUE_IMP_ELIM_CONV THENC LIST_AND_IMP_ELIM_CONV) t else
+   if Teq p then (TRUE_IMP_ELIM_CONV THENC LIST_AND_IMP_ELIM_CONV) t else
    (RAND_CONV LIST_AND_IMP_ELIM_CONV) t
 end handle HOL_ERR _ => raise UNCHANGED;
 
@@ -179,7 +179,8 @@ fun NEG_NEG_INTRO_CONV t = ISPEC t (GSYM satTheory.NOT_NOT);
  *   t
  *---------------------------------------------------------*)
 fun NEG_NEG_ELIM_CONV t =
-    (ISPEC (dest_neg (dest_neg t)) satTheory.NOT_NOT) handle HOL_ERR _ => raise UNCHANGED;
+    (ISPEC (dest_neg (dest_neg t)) satTheory.NOT_NOT)
+    handle HOL_ERR _ => raise UNCHANGED;
 
 
 (*---------------------------------------------------------
@@ -221,7 +222,7 @@ fun BOUNDED_NOT_EXISTS_LIST_CONV 0 tm = ALL_CONV tm
 (*repeats a conversion up to a given number of times*)
 fun BOUNDED_REPEATC 0 conv tm = ALL_CONV tm
   | BOUNDED_REPEATC n conv tm =
-    ((QCHANGED_CONV conv THENC (BOUNDED_REPEATC (n-1) conv)) ORELSEC ALL_CONV) tm;
+    ((QCHANGED_CONV conv THENC BOUNDED_REPEATC (n-1) conv) ORELSEC ALL_CONV) tm
 
 
 (*---------------------------------------------------------
@@ -252,15 +253,15 @@ fun FORALL_NOT_LIST_CONV tm =
 fun QUANT_SIMP_CONV t =
     if (is_exists t) then
        let
-          val (v,b) = dest_exists t;
-          val _ = if mem v (free_vars b) then raise UNCHANGED else ();
+          val (v,b) = dest_exists t
+          val _ = if tmem v (free_vars b) then raise UNCHANGED else ()
        in
           HO_PART_MATCH lhs boolTheory.EXISTS_SIMP t
        end
     else if (is_forall t) then
        let
-          val (v,b) = dest_forall t;
-          val _ = if mem v (free_vars b) then raise UNCHANGED else ();
+          val (v,b) = dest_forall t
+          val _ = if tmem v (free_vars b) then raise UNCHANGED else ()
        in
           HO_PART_MATCH lhs boolTheory.FORALL_SIMP t
        end
@@ -344,40 +345,46 @@ fun vc vL t =
      | CONST _       => (vL, NONE)
      | COMB (t1, t2) =>
        let
-          val (vL' , thm1_opt) = vc vL t1;
-          val (vL'', thm2_opt) = vc vL' t2;
-          val thm_opt = if not (isSome thm1_opt orelse isSome thm2_opt) then NONE else
-              let
-                 val thm1 = if (isSome thm1_opt) then valOf thm1_opt else REFL t1;
-                 val thm2 = if (isSome thm2_opt) then valOf thm2_opt else REFL t2;
-              in
+         val (vL' , thm1_opt) = vc vL t1;
+         val (vL'', thm2_opt) = vc vL' t2;
+         val thm_opt =
+             if not (isSome thm1_opt orelse isSome thm2_opt) then NONE
+             else
+               let
+                 val thm1 = if isSome thm1_opt then valOf thm1_opt else REFL t1
+                 val thm2 = if isSome thm2_opt then valOf thm2_opt else REFL t2
+               in
                  SOME (MK_COMB (thm1, thm2))
-              end;
+               end
        in
           (vL'', thm_opt)
        end
      | LAMB (v, _) =>
        let
-          val v' = variant vL v;
-          val (thm_v_opt,b) =
-              if aconv v v' then (NONE,body t) else
-              let
-                 val thm_v = ALPHA_CONV v' t;
-                 val b = body (rhs (concl thm_v))
-              in
+         val v' = variant vL v;
+         val (thm_v_opt,b) =
+             if aconv v v' then (NONE,body t) else
+             let
+               val thm_v = ALPHA_CONV v' t;
+               val b = body (rhs (concl thm_v))
+             in
                  (SOME thm_v, b)
-              end;
+             end
           val (vL' , thm_b_opt) = vc (v'::vL) b;
-          val thm_opt = if not (isSome thm_v_opt orelse isSome thm_b_opt) then NONE else
-              let
-                 val thm_v = if (isSome thm_v_opt) then valOf thm_v_opt else REFL t;
-                 val thm_b = if (isSome thm_b_opt) then valOf thm_b_opt else REFL b;
-              in
-                 SOME (TRANS thm_v (ABS v' thm_b))
-              end;
+          val thm_opt =
+              if not (isSome thm_v_opt orelse isSome thm_b_opt) then NONE
+              else
+                let
+                  val thm_v = if isSome thm_v_opt then valOf thm_v_opt
+                              else REFL t
+                  val thm_b = if isSome thm_b_opt then valOf thm_b_opt
+                              else REFL b
+                in
+                  SOME (TRANS thm_v (ABS v' thm_b))
+                end
        in
          (v'::vL', thm_opt)
-       end;
+       end
 in
    fun VARIANT_CONV fvL t =
    let
@@ -521,7 +528,8 @@ let
         let val athm = ASSUME (mk_neg org_rw_term) in
         [athm, GSYM athm] end) eq_t);
 
-   val thm = DISJ_CASES (ISPEC org_rw_term boolTheory.EXCLUDED_MIDDLE) thm_t thm_f
+   val thm =
+       DISJ_CASES (ISPEC org_rw_term boolTheory.EXCLUDED_MIDDLE) thm_t thm_f
 in
    thm
 end handle HOL_ERR _ => raise UNCHANGED;
@@ -584,16 +592,16 @@ end
 
 fun match_term_var v t1 t2 =
 let
-    val (s,t) = match_term t1 t2;
-    val _ = if (t = []) then () else Feedback.fail ();
-    val _ = if (s = []) then Feedback.fail () else ();
-    val i = hd s;
-    val _ = if (s = [i]) then () else Feedback.fail ();
+    val (s,t) = match_term t1 t2
+    val _ = if (t = []) then () else Feedback.fail ()
+    val _ = if null s then Feedback.fail () else ()
+    val i = hd s
+    val _ = if length s = 1 then () else Feedback.fail ()
 
-    val _ = if (#redex i = v) then () else Feedback.fail ();
+    val _ = if aconv (#redex i) v then () else Feedback.fail ()
 in
     #residue i
-end;
+end
 
 
 
@@ -624,14 +632,13 @@ let
    val (_,sub,fvL') =
       foldl (fn (fv, (vL,sub,fvL)) =>
           let
-             val fv' = variant vL fv;
-             val vL' = fv'::vL;
-             val fvL' = fv'::fvL;
-             val sub' = if (fv = fv') then sub else
-                        (fv |-> fv')::sub;
+             val fv' = variant vL fv
+             val vL' = fv'::vL
+             val fvL' = fv'::fvL
+             val sub' = if aconv fv fv' then sub else (fv |-> fv')::sub
           in
              (vL',sub',fvL')
-          end) (avoid_vL,[],[]) rename_vL;
+          end) (avoid_vL,[],[]) rename_vL
 in
   (rev fvL', sub)
 end;

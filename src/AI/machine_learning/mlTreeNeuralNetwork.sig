@@ -3,64 +3,69 @@ sig
 
 include Abbrev
 
-  type layer = {a  : real -> real, da : real -> real, w : real vector vector}
+  type vect = real vector
+  type mat = real vector vector
+  type layer = {a  : real -> real, da : real -> real, w : mat}
   type nn = layer list
-
-  type fpdata =
-    {layer : layer,
-     inv   : real vector,
-     outv  : real vector,
-     outnv : real vector}
-
-  type bpdata =
-    {doutnv : real vector,
-     doutv  : real vector,
-     dinv   : real vector,
-     dw     : real vector vector}
-
-  (* Tree NN *)
+  type fpdata = {layer : layer, inv : vect, outv : vect, outnv : vect}
+  type bpdata = {doutnv : vect, doutv  : vect, dinv : vect, dw : mat}
   type opdict = ((term * int),nn) Redblackmap.dict
-  type treenn = opdict * nn
 
-  (* initialization of the treenn *)
-  val random_headnn : (int * int) -> nn
-  val random_opdict : int -> (term * int) list -> opdict
-  val random_treenn : (int * int) -> (term * int) list -> treenn
+  type tnnex = (term * real list) list
+  type tnn_param =
+    {
+    operl: (term * int) list,
+    nlayer_oper: int, nlayer_headnn: int,
+    dimin: int, dimout: int
+    }
+  type tnn = {opdict: opdict, headnn: nn, dimin: int, dimout: int}
 
-  (* forward and backward propagation *)
-  val fp_treenn : treenn -> term list ->
-    (term, fpdata list) Redblackmap.dict * fpdata list
+  type dhex = (term * real list * real list) list
+  type dhtnn_param =
+    {
+    operl: (term * int) list,
+    nlayer_oper: int, nlayer_headeval: int, nlayer_headpoli: int,
+    dimin: int, dimpoli: int
+    }
+  type dhtnn =
+    {opdict: opdict, headeval: nn, headpoli: nn, dimin: int, dimpoli: int}
 
-  val bp_treenn :
-    int ->
-    (term, fpdata list) Redblackmap.dict * fpdata list ->
-    term list * real vector ->
-    (term * int, bpdata list list) Redblackmap.dict * bpdata list
+  type schedule = mlNeuralNetwork.train_param list
 
-  (* training set *)
-  val add_bias    : real vector -> real vector
-  val order_subtm : term -> term list
-  val norm_vect   : real vector -> real vector
-  val denorm_vect : real vector -> real vector
-  val prepare_trainset_poli   :
-    (term * real list) list -> (term list * real vector) list
-  val prepare_trainset_eval :
-    (term * real) list -> (term list * real vector) list
+  (* fixed embedding variables *)
+  val mk_embedding_var : real vector -> term
+
+  (* random generation *)
+  val random_tnn : tnn_param -> tnn
+  val random_dhtnn  : dhtnn_param -> dhtnn
+
+  (* input/output *)
+  val string_of_tnn : tnn -> string
+  val write_tnn : string -> tnn -> unit
+  val read_tnn : string -> tnn
+  val string_of_dhtnn : dhtnn -> string
+  val write_dhtnn : string -> dhtnn -> unit
+  val read_dhtnn : string -> dhtnn
+  val write_dhex : string -> dhex -> unit
+  val read_dhex : string -> dhex
+  val write_tnnex : string -> tnnex -> unit
+  val read_tnnex  : string -> tnnex
+  val write_operl : string -> (term * int) list -> unit
+  val read_operl  : string -> (term * int) list
+  val write_dhtnnparam : string -> dhtnn_param -> unit
+  val read_dhtnnparam : string -> dhtnn_param
 
   (* inference *)
-  val poli_treenn : treenn -> term -> real list
-  val eval_treenn : treenn -> term -> real
+  val infer_tnn : tnn -> term -> real list
+  val infer_tnn_nohead : tnn -> term -> real vector
+  val infer_dhtnn : dhtnn -> term -> real * real list
+  val infer_dhtnn_nohead : dhtnn -> term -> real vector
 
   (* training *)
-  val train_treenn_schedule :
-    int -> treenn -> int ->
-    (term list * real vector) list * (term list * real vector) list ->
-    (int * real) list ->
-    (treenn * real)
+  val train_tnn : schedule -> tnn -> tnnex * tnnex -> tnn
+  val train_dhtnn : schedule -> dhtnn -> dhex -> dhtnn
 
-  (* printing *)
-  val string_of_treenn : treenn -> string
-  val string_of_trainset_poli : (term * real list) list -> string
-  val string_of_trainset_eval : (term * real) list -> string
+  (* statistics *)
+  val tnn_accuracy : tnn -> (term * real list) list -> real
 
 end

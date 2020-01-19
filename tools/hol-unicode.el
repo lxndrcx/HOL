@@ -12,6 +12,8 @@
 (global-set-key (kbd "C-S-c") "⊆")
 (global-set-key (kbd "C-S-q") "≤")
 (global-set-key (kbd "C-M-~") "∼")
+(global-set-key (kbd "C-M-S-b") "□")
+(global-set-key (kbd "C-M-S-m") "◇") ; diaMond
 
 (global-set-key (kbd "C-{") "⟦")
 (global-set-key (kbd "C-}") "⟧")
@@ -24,6 +26,7 @@
 (define-prefix-command 'hol-unicode-subscript-map)
 (define-prefix-command 'hol-unicode-superscript-map)
 (define-prefix-command 'hol-unicode-C-map)
+(define-prefix-command 'hol-unicode-Q-map)
 (define-prefix-command 'hol-unicode-U-map)
 (define-prefix-command 'hol-unicode-leftarrow-map)
 (define-prefix-command 'hol-unicode-rightarrow-map)
@@ -42,6 +45,7 @@
 (define-key global-map (kbd "C-M-_") 'hol-unicode-subscript-map)
 (define-key global-map (kbd "C-M-^") 'hol-unicode-superscript-map)
 (define-key global-map (kbd "C-S-M-c") 'hol-unicode-C-map)
+(define-key global-map (kbd "C-S-M-q") 'hol-unicode-Q-map)
 (define-key global-map (kbd "C-S-M-u") 'hol-unicode-U-map)
 (define-key global-map (kbd "C-<") 'hol-unicode-leftarrow-map)
 (define-key global-map (kbd "C->") 'hol-unicode-rightarrow-map)
@@ -58,6 +62,7 @@
 (global-set-key (kbd "C-S-g") "γ")
 (global-set-key (kbd "C-S-d") "δ")
 (global-set-key (kbd "C-S-e") "ε")
+(global-set-key (kbd "C-S-h") "χ")
 (global-set-key (kbd "C-S-l") "λ")
 (global-set-key (kbd "C-S-m") "μ")
 (global-set-key (kbd "C-S-n") "ν")
@@ -229,10 +234,24 @@
 (define-key hol-unicode-C-map (kbd "-") "≃")
 (define-key hol-unicode-C-map (kbd ".") "⪽")
 (define-key hol-unicode-C-map (kbd "c") "⊂")
+(define-key hol-unicode-C-map (kbd "l") "ℓ")
 (define-key hol-unicode-C-map (kbd "p") "⊂")  ; "p" for proper
 (define-key hol-unicode-C-map (kbd "q") "≼")  ; "q" for less-or-eQual
 (define-key hol-unicode-C-map (kbd "=") "≈")
 (define-key hol-unicode-C-map (kbd "<") "≺")
+(define-key hol-unicode-C-map (kbd "^") "⌢")
+
+; sQuare operators map
+(define-key hol-unicode-Q-map (kbd "q") "⊑")
+(define-key hol-unicode-Q-map (kbd "<") "⊏")
+(define-key hol-unicode-Q-map (kbd "i") "⊓")
+(define-key hol-unicode-Q-map (kbd "u") "⊔")
+(define-key hol-unicode-Q-map (kbd "/") "⧄")
+(define-key hol-unicode-Q-map (kbd "+") "⊞")
+(define-key hol-unicode-Q-map (kbd "-") "⊟")
+(define-key hol-unicode-Q-map (kbd "*") "⊠")
+(define-key hol-unicode-Q-map (kbd ".") "⊡")
+
 
 ; double quotation marks map
 (define-key hol-unicode-dquote-map (kbd "C-M-{") "“")
@@ -359,6 +378,7 @@
 ; arrow maps
 (define-key hol-unicode-leftarrow-map (kbd "-") "←")
 (define-key hol-unicode-leftarrow-map (kbd "C-<") "↞")
+(define-key hol-unicode-leftarrow-map (kbd "C->") "↔")
 (define-key hol-unicode-leftarrow-map (kbd "<") "↢")
 (define-key hol-unicode-leftarrow-map (kbd "|") "↤")
 (define-key hol-unicode-leftarrow-map (kbd "`") "↼")
@@ -367,6 +387,7 @@
 (define-key hol-unicode-leftarrow-map (kbd "=") "⇐")
 (define-key hol-unicode-leftarrow-map (kbd "a") "↫")
 (define-key hol-unicode-leftarrow-map (kbd "c") "↩")
+(define-key hol-unicode-leftarrow-map (kbd "w") "⇜")
 (define-key hol-unicode-leftarrow-map (kbd "~") "↜")
 
 (define-key hol-unicode-rightarrow-map (kbd "-") "→")
@@ -379,4 +400,5 @@
 (define-key hol-unicode-rightarrow-map (kbd "=") "⇒")
 (define-key hol-unicode-rightarrow-map (kbd "a") "↬")
 (define-key hol-unicode-rightarrow-map (kbd "c") "↪")
+(define-key hol-unicode-rightarrow-map (kbd "w") "⇝")
 (define-key hol-unicode-rightarrow-map (kbd "~") "↝")

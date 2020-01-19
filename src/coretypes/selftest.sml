@@ -38,7 +38,13 @@ val _ = app tpp ["\\(x,y). x /\\ y",
                  "\\(x,y,z). x /\\ y /\\ z",
                  "\\((x,y),z). x /\\ y /\\ z",
                  "(\\(x,y,z). x /\\ y /\\ z) p",
-                 "case x of (y,z) => y /\\ z"]
+                 "case x of (y,z) => y /\\ z",
+                 "f000000000 arg000000000\n\
+                 \  (case x of\n\
+                 \     INL u => u inl00000000000 inl111111111\n\
+                 \   | INR v => v inr00000000000 inr111111111)\n\
+                 \  (arg222222222222 arg333333333 arg444444444)"
+                ]
 
 (* check LET_INTRO *)
 
@@ -134,13 +140,6 @@ val _ = tpp "bar T"
 val _ = trace ("types", 1) tpp "if (b :bool) then (x :'a) else (y :'a)"
 
 (* pairLib conversions etc *)
-fun convtest (nm,conv,t,expected) =
-  let
-    val _ = tprint nm
-    val res = conv t
-  in
-    if aconv (rhs (concl res)) expected then OK() else die()
-  end
 val _ = List.app convtest [
   ("PairRules.PBETA_CONV(1)", PairRules.PBETA_CONV,
    “(\ (a:'a,b:'b). f (a,b) (c:'c) : 'd) x”, “(f:'a # 'b -> 'c -> 'd) x c”),
@@ -169,27 +168,30 @@ end
 open pairLib
 val _ = app (ignore o hide) ["aa", "bb", "xx", "pp", "qq"]
 val _ = tprint "split_pair_case_tac (case in goal)"
-val g = ([] : term list, ``case xx of (aa,bb) => aa /\ bb``)
-val (sgs, vfn) = split_pair_case_tac g handle HOL_ERR _ => die ()
-val _ = case sgs of
-            [([a], g')] => if aconv (#2 g) g' andalso
-                              aconv a ``xx = (aa:bool,bb:bool)``
-                           then OK()
-                           else die ()
-          | _ => die ()
+val _ = let
+  val g = ([] : term list, ``case xx of (aa,bb) => aa /\ bb``)
+  fun check (sgs, vfn) =
+      case sgs of
+          [([a], g')] => aconv (#2 g) g' andalso
+                         aconv a ``xx = (aa:bool,bb:bool)``
+        | _ => false
+in
+  require (check_result check) split_pair_case_tac g
+end;
 
 val _ = tprint "split_pair_case_tac (case in assumptions)"
-val a = ``case xx of (aa,bb) => aa /\ bb``
-val g = ``pp /\ qq``
-val (sgs, vfn) = split_pair_case_tac ([a], ``pp /\ qq``)
-                 handle HOL_ERR _ => die()
-val _ = case sgs of
-            [([a1, a2], g')] => if aconv g' g andalso
-                                   aconv a1 ``xx = (aa:bool, bb:bool)`` andalso
-                                   aconv a2 a
-                                then OK()
-                                else die()
-          | _ => die()
+val _ = let
+  val a = ``case xx of (aa,bb) => aa /\ bb``
+  val g = ``pp /\ qq``
+  fun check (sgs, vfn) =
+      case sgs of
+          [([a1, a2], g')] => aconv g' g andalso
+                              aconv a1 ``xx = (aa:bool, bb:bool)`` andalso
+                              aconv a2 a
+        | _ => false
+in
+  require (check_result check) split_pair_case_tac ([a], ``pp /\ qq``)
+end
 
 val _ = Feedback.emit_MESG := false
 val _ = Feedback.emit_WARNING := false

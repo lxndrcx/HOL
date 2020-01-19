@@ -62,7 +62,7 @@ fun assume_prems thm = if not (is_imp (concl thm)) then thm
   else let
     val thm = CONV_RULE (RATOR_CONV simp_count_append) thm
     val l_asm = fst (dest_imp (concl thm))
-    val prem = if l_asm = T then TRUTH else ASSUME l_asm
+    val prem = if l_asm ~~ T then TRUTH else ASSUME l_asm
   in
     assume_prems (MP thm prem)
   end
@@ -194,7 +194,8 @@ fun dest_alookup_single tm = let
 fun mk_repr_step rs tm = let
     val (AList_Reprs inn_rs) = rs
     val (f, xs) = strip_comb tm
-    val is_short = dest_alookup_single tm <> NONE
+    val is_short =
+        not (option_eq (option_eq aconv) (dest_alookup_single tm) NONE)
     val is_merge = same_const option_choice_tm f
     val is_repr_merge = is_merge andalso (case peek_repr rs (hd xs) of
         SOME _ => true | NONE => false)
@@ -249,14 +250,13 @@ fun add_alist_repr rs thm = let
 fun timeit msg f v = let
     val start = Portable.timestamp ()
     val r = f v
-    val time = Portable.timestamp () - start
+    val time = Time.-(Portable.timestamp (), start)
   in print ("Time to " ^ msg ^ ": " ^ Portable.time_to_string time ^ "\n");
     r end
 
 (* testing *)
 
 fun test_rs () = let
-    val _ = load "comparisonTheory";
     val thm1 = DB.fetch "comparison" "good_cmp_Less_irrefl_trans"
     val thm2 = DB.fetch "comparison" "num_cmp_good"
     val R_thm = MATCH_MP thm1 thm2
