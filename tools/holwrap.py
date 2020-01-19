@@ -2,7 +2,7 @@
 
 # holwrap: it's like rlwrap but more colourful.
 # Featuring some StandardML syntax highlighting, history and multiline input.
-# Currently does print hol output until the next prompt (">") is read,
+# Currently doesn't print hol output until the next prompt (">") is read,
 #   if you know how to fix this please make issue or PR on github.
 
 # You will need python3 to run holwrap
