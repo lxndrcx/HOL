@@ -77,7 +77,6 @@ fun add_thmdep n predl =
 fun thmknn_wdep (symweight,feavdict) n fea =
   add_thmdep n (thmknn (symweight,feavdict) n fea)
 
-
 (* ------------------------------------------------------------------------
    Tactic predictions
    ------------------------------------------------------------------------ *)
@@ -124,5 +123,43 @@ fun add_stacdep ddict n l =
   in
     first_n n l2
   end
+
+(* ----------------------------------------------------------------------
+   Training from a dataset of pair (term,value)
+   --------------------------------------------------------------------- *)
+
+type knninfo =
+  (int, real) Redblackmap.dict * (term, int list) Redblackmap.dict
+
+fun train_knn trainset =
+  let
+    val trainfea = map_assoc feahash_of_term (map fst trainset);
+    val trainfead = dnew Term.compare trainfea;
+    val symweight = learn_tfidf trainfea;
+  in
+    (* rev for newest first since it might not be a set *)
+    ((symweight,trainfead), dnew Term.compare (rev trainset))
+  end
+
+fun infer_knn (knninfo,trainsetd) tm =
+  let val neartm = hd (termknn knninfo 1 (feahash_of_term tm)) in
+    dfind neartm trainsetd (* predicting from the trainset *)
+  end
+
+fun is_accurate_knn knn i (tm,rl) =
+  let
+    val _ = if i mod 10 = 0 then print_endline (its i) else ()
+    val rl1 = infer_knn knn tm
+    val rl2 = combine (rl,rl1)
+    fun test (x,y) = Real.abs (x - y) < 0.5
+  in
+    if all test rl2 then true else false
+  end
+
+fun knn_accuracy knn set =
+  let val correct = filter I (mapi (is_accurate_knn knn) set) in
+    Real.fromInt (length correct) / Real.fromInt (length set)
+  end
+
 
 end (* struct *)

@@ -4,10 +4,12 @@ struct
 open Lib Feedback HolKernel Parse boolLib
 
 datatype command = Theorem | Term | Type
-datatype opt = Turnstile | Case | TT | Def | SpacedDef | TypeOf | TermThm
+datatype opt = Turnstile | Case | TT | Def | SpacedDef | AlignedDef
+             | TypeOf | TermThm
              | Indent of int * bool
                  (* true: add spaces; false: just alter block indent *)
              | NoSpec
+             | NoDefSym
              | Inst of string * string
              | OverrideUpd of (string * int) * string
              | TraceSet of string * int
@@ -36,18 +38,21 @@ fun die s = (TextIO.output(TextIO.stdErr, s ^ "\n");
              OS.Process.exit OS.Process.failure)
 fun usage() =
     die ("Usage:\n  "^
-         CommandLine.name()^" [-w<linewidth>] [-m[<math-spacing>]] [--nomergeanalysis] " ^
+         CommandLine.name()^
+         " [-w<linewidth>] [-m[<math-spacing>]] [--nomergeanalysis] " ^
          "[overridesfile]\nor\n  "^
          CommandLine.name()^" -index filename")
 
 fun stringOpt pos s =
   case s of
     "|-" => SOME Turnstile
+  | "aligneddef" => SOME AlignedDef
   | "alltt" => SOME AllTT
   | "case" => SOME Case
   | "def" => SOME Def
   | "K" => SOME TermThm
   | "merge" => SOME Merge
+  | "nodefsym" => SOME NoDefSym
   | "nodollarparens" => SOME NoDollarParens
   | "nomerge" => SOME NoMerge
   | "nomath" => SOME NoMath
@@ -141,7 +146,7 @@ fun stringOpt pos s =
             else
               (warn (pos, s ^ " is not a valid option"); NONE)
           else if size sfx > 2 andalso sub(sfx,1) = #"/" then
-            SOME(OverrideUpd((rmws pfx, size sfx - 2), rmws (slice(sfx,2,NONE))))
+            SOME(OverrideUpd((rmws pfx, size sfx - 2),rmws (slice(sfx,2,NONE))))
           else
             SOME (Inst (rmws pfx, rmws (slice(sfx,1,NONE))))
         end
@@ -257,7 +262,8 @@ fun mkinst loc opts tm = let
     fun foldthis ((nm1, nm2), (tyacc, instacc)) =
         if CharVector.sub(nm1,0) = #":" then
           if CharVector.sub(nm2,0) = #":" then
-            ((Parse.Type [QUOTE nm2] |-> Parse.Type [QUOTE nm1]) :: tyacc, instacc)
+            ((Parse.Type [QUOTE nm2] |-> Parse.Type [QUOTE nm1]) :: tyacc,
+             instacc)
           else (warn (loc, "Type substitution mal-formed"); die "")
         else if CharVector.sub(nm2,0) = #":" then
           (warn (loc, "Type substitution mal-formed"); die "")
@@ -321,6 +327,22 @@ in
   if null insts then tm
   else
     rhs (concl (QCONV (depth1_conv (rename m)) tm))
+end
+
+local
+  val sm_t = prim_mk_const{Name = "stmarker", Thy = "marker"}
+  val exn = mk_HOL_ERR "EmitTeX" "replace_topeq"
+                       "Definition clause not an equality"
+in
+fun replace_topeq tm =
+    let val (eqt,l,r) =
+            case strip_comb tm of
+                (f, [x,y]) => if same_const boolSyntax.equality f then (f, x, y)
+                              else raise exn
+              | _ => raise exn
+    in
+      list_mk_comb(mk_icomb(sm_t, eqt), [l,r])
+    end
 end
 
 local
@@ -465,14 +487,29 @@ in
           val (ind,iact) = optset_indent opts
           fun ind_bl p = block CONSISTENT ind [iact, p]
         in
-          if OptSet.has Def opts orelse OptSet.has SpacedDef opts then let
+          if OptSet.has Def opts orelse OptSet.has SpacedDef opts orelse
+             OptSet.has AlignedDef opts
+          then let
               val newline = if OptSet.has SpacedDef opts then
                               B [add_newline, add_newline]
                             else add_newline
-              val lines = thm |> CONJUNCTS |> map (concl o SPEC_ALL)
+              val m = if OptSet.has NoDefSym opts then (fn t => t)
+                      else replace_topeq
+              val lines = thm |> CONJUNCTS |> map (m o concl o SPEC_ALL)
+              val pr =
+                  if OptSet.has AlignedDef opts then
+                    let val overrides' =
+                            updatef(("(HOLDefEquality)",
+                                     ("&\\HOLTokenDefEquality{}&", 1)),
+                                    overrides)
+                    in
+                      optprintermod (raw_pp_term_as_tex overrides')
+                    end
+                  else
+                    stdtermprint
             in
               ind_bl (
-                block_list (block INCONSISTENT 0) stdtermprint newline lines
+                block_list (block INCONSISTENT 0) pr newline lines
               )
             end
           else if rulep then ind_bl (rule_print stdtermprint (concl thm))

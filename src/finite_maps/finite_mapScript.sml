@@ -157,7 +157,7 @@ val FUPDATE_DEF = Q.new_definition
  `FUPDATE (f:'a |-> 'b) (x,y)
     = fmap_ABS (\a. if a=x then INL y else fmap_REP f a)`);
 
-val _ = overload_on ("|+", ``FUPDATE``);
+Overload "|+" = “FUPDATE”
 
 val FEMPTY_DEF = Q.new_definition
 ("FEMPTY_DEF",
@@ -167,7 +167,7 @@ val FAPPLY_DEF = Q.new_definition
 ("FAPPLY_DEF",
  `FAPPLY (f:'a |-> 'b) x = OUTL (fmap_REP f x)`);
 
-val _ = overload_on ("'", ``FAPPLY``);
+Overload "'" = “FAPPLY”
 
 val FDOM_DEF = Q.new_definition
 ("FDOM_DEF",
@@ -623,9 +623,10 @@ val SUBMAP_FUPDATE_EQN = Q.store_thm(
   METIS_TAC []);
 val _ = export_rewrites ["SUBMAP_FUPDATE_EQN"]
 
-Theorem SUBMAP_FDOM_SUBSET
-  `f1 SUBMAP f2 ==> FDOM f1 SUBSET FDOM f2`
-  (srw_tac[][SUBMAP_DEF,SUBSET_DEF]);
+Theorem SUBMAP_FDOM_SUBSET:
+  f1 SUBMAP f2 ==> FDOM f1 SUBSET FDOM f2
+Proof  srw_tac[][SUBMAP_DEF,SUBSET_DEF]
+QED
 
 (*---------------------------------------------------------------------------
     Restriction
@@ -785,8 +786,7 @@ val FUNION_DEF = new_specification
 val _ = set_mapped_fixity {term_name = "FUNION", tok = UTF8.chr 0x228C,
                            fixity = Infixl 500}
 
-val FDOM_FUNION = save_thm("FDOM_FUNION", FUNION_DEF |> SPEC_ALL |> CONJUNCT1)
-val _ = export_rewrites ["FDOM_FUNION"]
+Theorem FDOM_FUNION[simp] = FUNION_DEF |> SPEC_ALL |> CONJUNCT1
 
 val FUNION_FEMPTY_1 = Q.store_thm
 ("FUNION_FEMPTY_1[simp]",
@@ -813,11 +813,6 @@ val FUNION_FUPDATE_2 = Q.store_thm
         else FUPDATE (FUNION f g) (x,y)`,
  SRW_TAC [][GSYM fmap_EQ_THM, FDOM_FUPDATE, FUNION_DEF, FAPPLY_FUPDATE_THM,
             EXTENSION] THEN PROVE_TAC []);
-
-val FDOM_FUNION = Q.store_thm
-("FDOM_FUNION",
- `!^fmap g x. FDOM (FUNION f g) = FDOM f UNION FDOM g`,
- REWRITE_TAC [FUNION_DEF]);
 
 val DRESTRICT_FUNION = Q.store_thm
 ("DRESTRICT_FUNION",
@@ -1006,9 +1001,10 @@ val FLOOKUP_SUBMAP = store_thm(
   ``f SUBMAP g /\ (FLOOKUP f k = SOME v) ==> (FLOOKUP g k = SOME v)``,
   SRW_TAC [][FLOOKUP_DEF, SUBMAP_DEF] THEN METIS_TAC []);
 
-Theorem SUBMAP_FLOOKUP_EQN
-  `f SUBMAP g <=> !x y. (FLOOKUP f x = SOME y) ==> (FLOOKUP g x = SOME y)`
-  (rw[SUBMAP_DEF,FLOOKUP_DEF] \\ METIS_TAC[]);
+Theorem SUBMAP_FLOOKUP_EQN:
+  f SUBMAP g <=> !x y. (FLOOKUP f x = SOME y) ==> (FLOOKUP g x = SOME y)
+Proof    rw[SUBMAP_DEF,FLOOKUP_DEF] \\ METIS_TAC[]
+QED
 
 val SUBMAP_FUPDATE_FLOOKUP = store_thm(
   "SUBMAP_FUPDATE_FLOOKUP",
@@ -1137,11 +1133,16 @@ val o_f_FAPPLY = Q.store_thm
  SRW_TAC [][o_f_DEF]);
 val _ = export_rewrites ["o_f_FAPPLY"]
 
-val o_f_FEMPTY = store_thm(
-  "o_f_FEMPTY",
-  ``f o_f FEMPTY = FEMPTY``,
-  SRW_TAC [][GSYM fmap_EQ_THM, FDOM_o_f])
-val _ = export_rewrites ["o_f_FEMPTY"]
+Theorem o_f_FEMPTY[simp]:
+  f o_f FEMPTY = FEMPTY
+Proof
+  SRW_TAC [][GSYM fmap_EQ_THM, FDOM_o_f]
+QED
+
+Theorem o_f_id[simp]:
+  !m. (\x.x) o_f m = m
+Proof rw [fmap_EXT]
+QED
 
 val FEVERY_o_f = store_thm (
   "FEVERY_o_f",
@@ -1218,6 +1219,13 @@ val FRANGE_FUNION = store_thm(
          METIS_TAC []) THEN
   ASM_SIMP_TAC (srw_ss() ++ boolSimps.DNF_ss ++ boolSimps.CONJ_ss)
                [FRANGE_DEF, FUNION_DEF, EXTENSION]);
+
+Theorem o_f_cong[defncong]:
+  !f fm f' fm'.
+     (fm = fm') /\ (!v. v IN FRANGE fm ==> (f v = f' v)) ==>
+     (f o_f fm = f' o_f fm')
+Proof SRW_TAC[boolSimps.DNF_ss][fmap_EXT,FRANGE_DEF]
+QED
 
 (*---------------------------------------------------------------------------
         Range restriction
@@ -1394,10 +1402,10 @@ val f_o_ASSOC = Q.store_thm(
     Domain subtraction (at a single point)
    ---------------------------------------------------------------------- *)
 
-val fmap_domsub = new_definition(
-  "fmap_domsub",
-  ``fdomsub fm k = DRESTRICT fm (COMPL {k})``);
-val _ = overload_on ("\\\\", ``fdomsub``);
+Definition fmap_domsub:
+  fdomsub fm k = DRESTRICT fm (COMPL {k})
+End
+Overload "\\\\" = “fdomsub”
 (* this has been set up as an infix in relationTheory *)
 
 val DOMSUB_FEMPTY = store_thm(
@@ -1542,12 +1550,11 @@ val SUBMAP_FUPDATE = Q.store_thm
     Iterated updates
    ---------------------------------------------------------------------- *)
 
-val FUPDATE_LIST =
- new_definition
-  ("FUPDATE_LIST",
-   ``FUPDATE_LIST = FOLDL FUPDATE``);
+Definition FUPDATE_LIST:
+  FUPDATE_LIST = FOLDL FUPDATE
+End
 
-val _ = overload_on ("|++", ``FUPDATE_LIST``);
+Overload "|++" = “FUPDATE_LIST”
 
 val FUPDATE_LIST_THM = store_thm(
   "FUPDATE_LIST_THM",
@@ -1640,6 +1647,9 @@ val FUPDATE_LIST_SNOC = store_thm("FUPDATE_LIST_SNOC",
   ``!xs x fm. fm |++ SNOC x xs = (fm |++ xs) |+ x``,
   Induct THEN SRW_TAC[][FUPDATE_LIST_THM])
 
+
+
+
 (* ----------------------------------------------------------------------
     More theorems
    ---------------------------------------------------------------------- *)
@@ -1652,13 +1662,15 @@ val FAPPLY_FUPD_EQ = prove(
 
 
 (* (pseudo) injectivity results about fupdate *)
-Theorem FEMPTY_FUPDATE_EQ
-  `!x y. (FEMPTY |+ x = FEMPTY |+ y) <=> (x = y)`
-  (Cases >> Cases >> srw_tac[][fmap_eq_flookup,FDOM_FUPDATE,FLOOKUP_UPDATE] >>
+Theorem FEMPTY_FUPDATE_EQ:
+  !x y. (FEMPTY |+ x = FEMPTY |+ y) <=> (x = y)
+Proof
+  Cases >> Cases >> srw_tac[][fmap_eq_flookup,FDOM_FUPDATE,FLOOKUP_UPDATE] >>
   Cases_on`q=q'`>>srw_tac[][] >- (
     srw_tac[][EQ_IMP_THM] >>
     pop_assum(qspec_then`q`mp_tac) >> srw_tac[][] ) >>
-  qexists_tac`q`>>srw_tac[][])
+  qexists_tac`q`>>srw_tac[][]
+QED
 
 val FUPD11_SAME_KEY_AND_BASE = store_thm(
   "FUPD11_SAME_KEY_AND_BASE",
@@ -1717,10 +1729,12 @@ val FDOM_FUPDATE_LIST = store_thm(
                            FDOM_FUPDATE, pairTheory.FORALL_PROD,
                            EXTENSION] THEN PROVE_TAC []);
 
-Theorem FUPDATE_LIST_EQ_FEMPTY
-  `!fm ls. (fm |++ ls = FEMPTY) <=> (fm = FEMPTY) /\ (ls = [])`
-  (srw_tac[][EQ_IMP_THM,FUPDATE_LIST_THM] >>
-  full_simp_tac(srw_ss())[GSYM fmap_EQ_THM,FDOM_FUPDATE_LIST])
+Theorem FUPDATE_LIST_EQ_FEMPTY:
+  !fm ls. (fm |++ ls = FEMPTY) <=> (fm = FEMPTY) /\ (ls = [])
+Proof
+  srw_tac[][EQ_IMP_THM,FUPDATE_LIST_THM] >>
+  full_simp_tac(srw_ss())[GSYM fmap_EQ_THM,FDOM_FUPDATE_LIST]
+QED
 
 val FUPDATE_LIST_SAME_UPDATE = store_thm(
   "FUPDATE_LIST_SAME_UPDATE",
@@ -1817,11 +1831,117 @@ val FMEQ_SINGLE_SIMPLE_DISJ_ELIM = store_thm(
   PROVE_TAC [FAPPLY_FUPDATE]);
 
 
-val FUPDATE_PURGE = Q.store_thm
-("FUPDATE_PURGE",
- `!f x y. f |+ (x,y) = (f \\ x) |+ (x,y)`,
+(* ----------------------------------------------------------------------
+    folding over a finite map : ITFMAP (named by analogy with ITSET and
+    ITBAG)
+   ---------------------------------------------------------------------- *)
+
+Inductive ITFMAPR:
+  (!A. ITFMAPR f FEMPTY A A) /\
+  (!A1 A2 k v fm.
+     k NOTIN FDOM fm /\ ITFMAPR f fm A1 A2 ==>
+     ITFMAPR f (fm |+ (k,v)) A1 (f k v A2))
+End
+
+Theorem ITFMAPR_FEMPTY[simp]:
+  ITFMAPR f FEMPTY A1 A2 <=> A1 = A2
+Proof
+  simp[Once ITFMAPR_cases] >> metis_tac[]
+QED
+
+Theorem ITFMAPR_total:
+  !fm r0. ?r. ITFMAPR f fm r0 r
+Proof
+  ho_match_mp_tac fmap_INDUCT >> metis_tac[ITFMAPR_rules, DOMSUB_NOT_IN_DOM]
+QED
+
+Theorem FUPDATE_PURGE'[simp]:
+  !f x y. (f \\ x) |+ (x,y) = f |+ (x,y)
+Proof
  SRW_TAC [] [fmap_EXT,EXTENSION,FAPPLY_FUPDATE_THM,DOMSUB_FAPPLY_THM] THEN
- METIS_TAC[]);
+ METIS_TAC[]
+QED
+
+Theorem FUPDATE_PURGE:
+  !f x y. f |+ (x,y) = (f \\ x) |+ (x, y)
+Proof
+  simp[]
+QED
+
+Theorem fmap_cases_NOTIN:
+  !fm. fm = FEMPTY \/ ?k v fm0. k NOTIN FDOM fm0 /\ fm = fm0 |+ (k,v)
+Proof
+  gen_tac >> qspec_then ‘fm’ strip_assume_tac fmap_CASES >> fs[] >>
+  rename [‘fm = fm0 |+ (k,v)’] >>
+  map_every qexists_tac [‘k’, ‘v’, ‘fm0 \\ k’] >> simp[]
+QED
+
+Theorem ITFMAPR_unique:
+  (!k1 k2 v1 v2 A. f k1 v1 (f k2 v2 A) = f k2 v2 (f k1 v1 A)) ==>
+  !fm A0 A1 A2. ITFMAPR f fm A0 A1 /\ ITFMAPR f fm A0 A2 ==> A1 = A2
+Proof
+  strip_tac >> gen_tac >> completeInduct_on ‘CARD (FDOM fm)’ >> rw[] >>
+  Cases_on ‘fm = FEMPTY’ >> fs[] >>
+  qpat_x_assum ‘ITFMAPR _ _ _ A2’ mp_tac >>
+  simp[Once ITFMAPR_cases] >>
+  qpat_x_assum ‘ITFMAPR _ _ _ A1’ mp_tac >>
+  simp[Once ITFMAPR_cases] >>
+  disch_then (qx_choosel_then [‘A1a’, ‘k1’, ‘v1’, ‘fm1’] strip_assume_tac) >>
+  disch_then (qx_choosel_then [‘A1b’, ‘k2’, ‘v2’, ‘fm2’] strip_assume_tac) >>
+  Cases_on ‘k1 = k2’ >> fs[]
+  >- (‘v1 = v2 /\ fm1 = fm2’ by metis_tac[FUPD11_SAME_NEW_KEY] >> rw[] >>
+      fs[PULL_FORALL] >> metis_tac[DECIDE “x < SUC x”]) >>
+  ‘?A0'. ITFMAPR f (fm1 \\ k2) A0 A0'’ by metis_tac[ITFMAPR_total] >>
+  ‘fm1 \\ k2 = fm2 \\ k1’
+     by (rw[fmap_EXT]
+         >- (simp[EXTENSION] >> fs[fmap_EXT, EXTENSION] >> metis_tac[]) >>
+         rw[DOMSUB_FAPPLY_THM] >> fs[] >>
+         fs[fmap_EXT, FAPPLY_FUPDATE_THM, EXTENSION] >> metis_tac[]) >>
+  fs[PULL_FORALL] >>
+  ‘ITFMAPR f ((fm2 \\ k1) |+ (k2,v2)) A0 (f k2 v2 A0')’
+    by metis_tac[ITFMAPR_rules, FDOM_DOMSUB, IN_DELETE] >>
+  qabbrev_tac ‘base = fm2 \\ k1’ >>
+  ‘fm1 = base |+ (k2,v2) /\ fm2 = base |+ (k1,v1)’
+    by (rw[Abbr‘base’] >>
+        fs[fmap_EXT, EXTENSION, FAPPLY_FUPDATE_THM, DOMSUB_FAPPLY_THM] >>
+        PROVE_TAC[]) >>
+  ‘k1 NOTIN FDOM base /\ k2 NOTIN FDOM base’
+    by metis_tac[FDOM_DOMSUB, IN_DELETE] >>
+  markerLib.RM_ABBREV_TAC "base" >>
+  qpat_x_assum ‘_ = base’ (K ALL_TAC) >> rw[] >> fs[] >>
+  ‘CARD (FDOM (base |+ (k2,v2))) < SUC (SUC (CARD (FDOM base)))’ by simp[] >>
+  first_assum drule >> strip_tac >> ‘f k2 v2 A0' = A1a’ by metis_tac[] >>
+  pop_assum (SUBST_ALL_TAC o GSYM) >> pop_assum (K ALL_TAC) >>
+  ‘ITFMAPR f (base |+ (k1,v1)) A0 (f k1 v1 A0')’ by metis_tac[ITFMAPR_rules] >>
+  ‘CARD (FDOM (base |+ (k1,v1))) < SUC (SUC (CARD (FDOM base)))’ by simp[] >>
+  first_x_assum drule >>
+  disch_then (qspecl_then [‘A0’, ‘A1b’, ‘f k1 v1 A0'’] mp_tac) >> simp[]
+QED
+
+Definition ITFMAP_def:
+  ITFMAP f fm A0 = @A. ITFMAPR f fm A0 A
+End
+
+Theorem ITFMAP_thm:
+  (ITFMAP f FEMPTY A = A) /\
+  ((!k1 k2 v1 v2 A. f k1 v1 (f k2 v2 A) = f k2 v2 (f k1 v1 A))
+     ==>
+   ITFMAP f (fm |+ (k,v)) A = f k v (ITFMAP f (fm\\k) A))
+Proof
+  simp[ITFMAP_def] >>
+  strip_tac >> qabbrev_tac ‘b = @A'. ITFMAPR f (fm\\k) A A'’ >>
+  ‘ITFMAPR f (fm \\ k) A b’
+    by (simp[Abbr‘b’] >> SELECT_ELIM_TAC >> metis_tac[ITFMAPR_total]) >>
+  ‘ITFMAPR f ((fm\\k) |+ (k,v)) A (f k v b)’
+    by simp[FDOM_DOMSUB, ITFMAPR_rules] >>
+  fs[] >> SELECT_ELIM_TAC >> metis_tac[ITFMAPR_unique]
+QED
+
+Theorem ITFMAP_FEMPTY[simp]:
+  ITFMAP f FEMPTY A = A
+Proof
+  simp[ITFMAP_thm]
+QED
 
 (*---------------------------------------------------------------------------*)
 (* For EVAL on terms with finite map expressions.                            *)
@@ -2761,6 +2881,18 @@ val fevery_funion = Q.store_thm ("fevery_funion",
  BasicProvers.EVERY_CASE_TAC >>
  fs []);
 
+Theorem DISJOINT_FEVERY_FUNION:
+  DISJOINT (FDOM m1) (FDOM m2) ==>
+  (FEVERY P (FUNION m1 m2) <=> FEVERY P m1 /\ FEVERY P m2)
+Proof
+  rw[EQ_IMP_THM,fevery_funion]
+  \\ fs[FEVERY_ALL_FLOOKUP,FLOOKUP_FUNION,IN_DISJOINT] \\ rw[]
+  \\ first_x_assum match_mp_tac
+  \\ CASE_TAC
+  \\ fs[FLOOKUP_DEF]
+  \\ metis_tac[]
+QED
+
  (* Sorting stuff *)
 
 val FUPDATE_LIST_ALL_DISTINCT_PERM = store_thm("FUPDATE_LIST_ALL_DISTINCT_PERM",
@@ -2790,9 +2922,10 @@ end
 
 val FDIFF_def = Define `FDIFF f1 s = DRESTRICT f1 (COMPL s)`;
 
-Theorem FDOM_FDIFF[simp]
-  `x IN FDOM (FDIFF refs f2) <=> x IN FDOM refs /\ x NOTIN f2`
-  (full_simp_tac(srw_ss())[FDIFF_def,DRESTRICT_DEF]);
+Theorem FDOM_FDIFF[simp]:
+  x IN FDOM (FDIFF refs f2) <=> x IN FDOM refs /\ x NOTIN f2
+Proof   full_simp_tac(srw_ss())[FDIFF_def,DRESTRICT_DEF]
+QED
 
 val NUM_NOT_IN_FDOM =
   MATCH_MP IN_INFINITE_NOT_FINITE (CONJ INFINITE_NUM_UNIV
@@ -2804,14 +2937,13 @@ val EXISTS_NOT_IN_FDOM_LEMMA = Q.prove(
   `?x. ~(x IN FDOM (refs:num|->'a))`,
   METIS_TAC [NUM_NOT_IN_FDOM]);
 
-Theorem LEAST_NOTIN_FDOM
-  `(LEAST ptr. ptr NOTIN FDOM (refs:num|->'a)) NOTIN FDOM refs`
-  (ASSUME_TAC
-     (EXISTS_NOT_IN_FDOM_LEMMA |> SIMP_RULE std_ss [whileTheory.LEAST_EXISTS])>>
-   fs[]);
-
-
-
+Theorem LEAST_NOTIN_FDOM:
+  (LEAST ptr. ptr NOTIN FDOM (refs:num|->'a)) NOTIN FDOM refs
+Proof
+  ASSUME_TAC
+    (EXISTS_NOT_IN_FDOM_LEMMA |> SIMP_RULE std_ss [whileTheory.LEAST_EXISTS])>>
+   fs[]
+QED
 
 (*---------------------------------------------------------------------------*)
 (* Add fmap type to the TypeBase. Notice that we treat keys as being of size *)

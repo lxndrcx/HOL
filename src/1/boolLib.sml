@@ -8,19 +8,11 @@ struct
 
 open boolTheory boolSyntax Hol_pp ParseExtras
      Drule Tactical Tactic Thm_cont Conv Rewrite Prim_rec Abbrev DB
-     BoundedRewrites TexTokenMap ThmSetData
+     BoundedRewrites TexTokenMap
 
-local open DefnBase TypeBase Ho_Rewrite Psyntax Rsyntax in end
+local open TypeBase Ho_Rewrite Psyntax Rsyntax in end
 
 val parse_from_grammars = Parse.parse_from_grammars;
-
-(* ----------------------------------------------------------------------
-    Update DefnBase with some extra congruence rules
-   ---------------------------------------------------------------------- *)
-
-val _ = DefnBase.write_congs (DefnBase.read_congs() @
-                              map (REWRITE_RULE [AND_IMP_INTRO])
-                                  [RES_FORALL_CONG, RES_EXISTS_CONG])
 
 (*---------------------------------------------------------------------------
       Stock the rewriter in Ho_Rewrite with some rules not yet
@@ -36,7 +28,7 @@ local open HolKernel Ho_Rewrite  (* signature control *)
       open Parse
 in
 (*---------------------------------------------------------------------------*)
-(* The first canjunct is useful when rewriting assumptions, but not when     *)
+(* The first conjunct is useful when rewriting assumptions, but not when     *)
 (* rewriting conclusion, since it prevents stripping. Better rewrite on      *)
 (* conclusions is IF_THEN_T_IMP.                                             *)
 (*---------------------------------------------------------------------------*)
@@ -119,39 +111,26 @@ val def_suffix = ref "_def"
 
 local
 open Feedback Theory
-fun resolve_storename s = let
-  open Substring
-  val (bracketl,rest) = position "[" (full s)
-in
-  if isEmpty rest then (s,[])
-  else let
-    val (names,bracketr) = position "]" (slice(rest,1,NONE))
-  in
-    if size bracketr <> 1 then
-      raise mk_HOL_ERR "boolLib" "resolve_storename"
-            ("Malformed theorem-binding specifier: "^s)
-    else
-      (string bracketl, String.fields (fn c => c = #",") (string names))
-  end
-end
+fun prove_local (n,th) =
+    if not (!Globals.interactive) then
+      (print ("Proved triviality _ \"" ^ String.toString n ^ "\"\n"); th)
+    else th
 in
 fun save_thm_attrs fname (n, attrs, th) = let
-  fun do_attr a = let
-    val storefn = valOf (ThmSetData.data_storefn a)
-                        handle Option => raise mk_HOL_ERR "boolLib" fname
-                                               ("No attribute with name "^a)
-    val exportfn = ThmSetData.data_exportfn a
+  val (save, attrf, attrs) = let
+    val nonlocal = List.filter (not o Lib.equal "local") attrs
   in
-    storefn n;
-    case exportfn of
-        NONE => ()
-      | SOME ef => ef (current_theory()) [(n,th)]
+    if length nonlocal = length attrs then
+      (Theory.save_thm, ThmAttribute.store_at_attribute, attrs)
+    else
+      (prove_local, ThmAttribute.local_attribute, nonlocal)
   end
+  fun do_attr a = attrf {thm = th, name = n, attrname = a}
 in
-  Theory.save_thm(n,th) before app do_attr attrs
+  save(n,th) before app do_attr attrs
 end
 fun store_thm(n0,t,tac) = let
-  val (n, attrs) = resolve_storename n0
+  val (n, attrs) = ThmAttribute.extract_attributes n0
   val th = Tactical.prove(t,tac)
               handle e => (print ("Failed to prove theorem " ^ n ^ ".\n");
                            Raise e)
@@ -159,7 +138,7 @@ in
   save_thm_attrs "store_thm" (n,attrs,th)
 end
 fun save_thm(n0,th) = let
-  val (n,attrs) = resolve_storename n0
+  val (n,attrs) = ThmAttribute.extract_attributes n0
 in
   save_thm_attrs "save_thm" (n,attrs,th)
 end

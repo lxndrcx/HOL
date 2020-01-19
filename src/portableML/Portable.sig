@@ -11,6 +11,7 @@ sig
   val |>> : ('a * 'b) * ('a -> 'c) -> ('c * 'b)
   val ||> : ('a * 'b) * ('b -> 'c) -> ('a * 'c)
   val ||-> : ('a * 'b) * ('a -> 'b -> 'c) -> 'c
+  val B2 : ('c -> 'd) -> ('a -> 'b -> 'c) -> 'a -> 'b -> 'd
   val C : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
   val I : 'a -> 'a
   val K : 'a -> 'b -> 'a
@@ -64,7 +65,10 @@ sig
   val foldr2' : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
                                               (* exn ListPair.UnequalLengths *)
   val foldl_map : ('a * 'b -> 'a * 'c) -> 'a * 'b list -> 'a * 'c list
+  val zip3 : 'a list * 'b list * 'c list -> ('a * 'b * 'c) list
+                                              (* exn ListPair.UnequalLengths *)
   val separate : 'a -> 'a list -> 'a list
+  val front_last : 'a list -> 'a list * 'a
   val filter : ('a -> bool) -> 'a list -> 'a list
   val filter_out : ('a -> bool) -> 'a list -> 'a list
   val partition : ('a -> bool) -> 'a list -> 'a list * 'a list
@@ -120,6 +124,7 @@ sig
 
   type 'a eqf = 'a -> 'a -> bool
   val pair_eq : 'a eqf -> 'b eqf -> ('a * 'b) eqf
+  val fst_eq : 'a eqf -> ('a * 'b) eqf
   val option_eq : 'a eqf -> 'a option eqf
   val list_eq : 'a eqf -> 'a list eqf
   val redres_eq : 'a eqf -> 'b eqf -> {redex:'a,residue:'b} eqf

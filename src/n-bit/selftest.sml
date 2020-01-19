@@ -11,6 +11,25 @@ val _ = set_trace "bit blast" 0
 
 val ERR = mk_HOL_ERR "selftest"
 
+fun parse_n_eval s expected =
+    let
+      fun checkconv th =
+          aconv (rhs (concl th)) expected handle HOL_ERR _ => false
+      fun kont (Exn.Res t) =
+          (tprint "EVAL result of parse";
+           require_msg (check_result checkconv) thm_to_string
+                                         EVAL
+                                         t)
+        | kont _ = raise Fail "Can't happen"
+      val _ = tprint ("Parse \"" ^ s ^ "\"")
+    in
+      require_msgk is_result (K "") (fn s => Parse.Term [QUOTE s]) kont s
+    end
+
+val _ = parse_n_eval "~2w : word4" “13w : word4”
+val _ = parse_n_eval "¬2w : word4" “13w : word4”
+val _ = parse_n_eval "(2w : word4) + 11w" “13w : word4”
+
 val prs = StringCvt.padRight #" "
 fun trunc w t = let
   val s = Lib.with_flag (Globals.linewidth, 10000) term_to_string t
@@ -46,33 +65,22 @@ val _ = tprint "Printing abbreviated word types"
 val _ = if type_to_string u8 = ":u8" then OK() else die "FAILED!"
 
 val _ = tprint "Parsing Datatype with bool-array type"
-val _ = (Datatype`mytype = mytype_con (bool[3])`; OK()) handle HOL_ERR _ => die "FAILED"
+val _ = require is_result (quietly Datatype) `mytype = mytype_con (bool[3])`;
 
-fun test (c:conv) tm = let
-  val rt = Timer.startRealTimer ()
-  val res = Lib.total c tm
-  val elapsed = Timer.checkRealTimer rt
-in
-  TextIO.print (trunc 65 tm ^ Time.toString elapsed);
-  case res of
-      NONE => die "FAILED!"
-    | _ => print "\n"
-end
+fun test (c:conv) tm =
+    (tprint (trunc 65 tm); testutils.require testutils.is_result c tm)
 
-fun test_fail orig (c:conv) tm = let
-  val res = (c tm; SOME "should fail!")
-              handle HolSatLib.SAT_cex _ => SOME "unexpected counterexample!"
-                   | HOL_ERR {origin_function,...} =>
-                       if origin_function = orig then
-                         NONE
-                       else
-                         SOME ("unexpected exception from " ^ origin_function)
-in
-  tprint ("Expecting failure: " ^ trunc 46 tm);
-  case res of
-      NONE => OK()
-    | SOME s => die s
-end
+fun test_fail orig (c:conv) tm =
+    let
+      open testutils
+      fun printarg t = "Expecting failure: " ^ trunc 46 tm
+    in
+      shouldfail {checkexn = check_HOL_ERRexn (fn (_, f, _) => f = orig),
+                  printarg = printarg,
+                  printresult = thm_to_string,
+                  testfn = c}
+                 tm
+    end
 
 fun test_counter (c:conv) tm = let
   val res = (c tm; SOME "should fail!")
@@ -91,20 +99,22 @@ in
 end
 
 local
+  exception InternalDie of string
+  fun idie s = raise InternalDie s
   fun test_conv (conv: conv) tm =
     let
       val (t, expected) = boolSyntax.dest_eq tm
       val s = fst (boolSyntax.dest_strip_comb t)
       val s = case String.tokens (Lib.equal #"$") s of
                  [_, s] => s
-               | _ => die "FAILED\n  Couldn't get name."
+               | _ => idie "FAILED\n  Couldn't get name."
       val _ = tprint s
-      val th = conv t handle _ => die "FAILED - exception raised"
-      val r = rhs (concl th) handle HOL_ERR _ => die "FAILED - no RHS"
+      val th = conv t handle _ => idie "FAILED - exception raised"
+      val r = rhs (concl th) handle HOL_ERR _ => idie "FAILED - no RHS"
     in
       if aconv r expected then OK()
       else die ("FAILED\n  Got ``" ^ term_to_string r ^ "``")
-    end
+    end handle InternalDie s => die s
   fun getlocpragma s =
       let
         open Substring
@@ -146,6 +156,7 @@ val _ = blast_fail ``?x: word8. 3w > 4w : word4``
 val _ = blast_fail ``x + x = x :'a word``
 
 (* Fail, can't solve *)
+val _ = ParseExtras.temp_loose_equality()
 val _ = blast_fail ``?x. !y. x <=+ y : word8``
 val _ = blast_fail ``!y. ?x. x <=+ y : word8``
 val _ = blast_fail ``?x. x <=+ y : word8``

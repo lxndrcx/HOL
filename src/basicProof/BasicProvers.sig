@@ -30,6 +30,8 @@ sig
   val augment_srw_ss  : simpLib.ssfrag list -> unit
   val diminish_srw_ss : string list -> simpLib.ssfrag list
   val export_rewrites : string list -> unit
+  val delsimps        : string list -> unit
+  val temp_delsimps   : string list -> unit
   val thy_ssfrag      : string -> simpLib.ssfrag
 
   (* LET manoeuvres *)
@@ -64,8 +66,11 @@ sig
   val primInduct        : tmkind -> tactic -> tactic
   val Cases             : tactic
   val Induct            : tactic
+  val namedCases        : string list -> tactic
+
   val Cases_on          : term quotation -> tactic
   val Induct_on         : term quotation -> tactic
+  val namedCases_on     : term quotation -> string list -> tactic
 
   val PURE_TOP_CASE_TAC : tactic  (* top-most case-split *)
   val PURE_CASE_TAC     : tactic  (* smallest case-split (concl) *)

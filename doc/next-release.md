@@ -3,7 +3,7 @@
 <!-- search and replace ?????? strings corresponding to release name -->
 <!-- indent code within bulleted lists to column 11 -->
 
-(Released: ???)
+(Released: )
 
 We are pleased to announce the ?????? release of HOL 4.
 
@@ -20,131 +20,127 @@ Contents
 New features:
 -------------
 
-*   We have implemented new syntaxes for `store_thm` and `save_thm`, which better satisfy the recommendation that `name1` and `name2` below should be the same:
+*   The special `Type` syntax for making type abbreviations can now map to `temp_type_abbrev` (or `temp_type_abbrev_pp`) by adding the `local` attribute to the name of the abbreviation.
 
-           val name1 = store_thm("name2", tm, tac);
+    For example
 
-    Now we can remove the “code smell” by writing either
+           Type foo[local] = “:num -> bool # num”
 
-           Theorem name tm-quotation tac
+    or
 
-    which will typically look like
+           Type foo[local,pp] = “:num -> bool # num”
 
-           Theorem name
-             ‘∀x. P x ⇒ Q x’
-             (rpt strip_tac >> ...);
+    Thanks to Magnus Myreen for the feature suggestion.
 
-    or by writing with the general pattern
+*   We have added a special syntactic form `Overload` to replace various flavours of `overload_on` calls.
+    The core syntax is exemplified by
 
-           Theorem name: term-syntax
-           Proof tac
-           QED
+           Overload foo = “myterm”
 
-    which might look like
+    Attributes can be added after the name.
+    Possible attributes are `local` (for overloads that won’t be exported) and `inferior` to cause a call `inferior_overload_on` (which makes the overload the pretty-printer’s last choice).
 
-           Theorem name:
-             ∀x. P x ⇒ Q x
-           Proof
-             rpt strip_tac >> ...
-           QED
-
-    This latter form must have the `Proof` and `QED` keywords in column 0 in order for the lexing machinery to detect the end of the term and tactic respectively.
-    Both forms map to applications of `Q.store_thm` underneath, with an ML binding also made to the appropriate name.
-    Both forms allow for theorem attributes to be associated with the name, so that one can write
-
-           Theorem ADD0[simp]: ∀x. x + 0 = x
-           Proof tactic
-           QED
-
-    Finally, to replace
-
-           val nm = save_thm(“nm”, thm_expr);
-
-    one can now write
-
-           Theorem nm = thm_expr
-
-    These names can also be given attributes in the same way.
-
+    Thanks to Magnus Myreen for the feature suggestion.
 
 Bugs fixed:
 -----------
 
+*  `extrealTheory`: the old definition of `extreal_add` wrongly allows
+   `PosInf + NegInf = PosInf`, while the definition of `extreal_sub` wrongly
+    allows `PosInf - PosInf = PosInf` and `NegInf - NegInf = PosInf`. Now
+    these cases are unspecified, so is division-by-zero (which is indeed
+    allowed for reals in `realTheory`). As a consequence, now all
+   `EXTREAL_SUM_IAMGE`-related theorems require that there must be no
+    mixing of `PosInf` and `NegInf` in the sum elements.
+    A bug in `ext_suminf` with non-positive functions is also fixed.
+
+    There is a major backwards-incompatibility: the above changes may
+    lead to more complicated proofs when using extreals, while better 
+    alignments with textbook proofs are achieved, on the other hand.
+
 New theories:
 -------------
 
-*   `real_topologyTheory`: a rather complete theory of Elementary
-    Topology in Euclidean Space, ported by Muhammad Qasim and Osman
-    Hasan from HOL-light (up to 2015). The part of General Topology
-    (independent of `realTheory`) is now available at
-    `topologyTheory`; the old `topologyTheory` is renamed to
-    `metricTheory`.
+*  `derivativeTheory` and `integrationTheory`: univariate
+    differential and integral calculus (based on Henstock-Kurzweil
+    integral, or generalized Riemann integral, or gauge integral),
+    ported by Muhammad Qasim, Osman Hasan et al. from HOL Light (up to 2015).
 
-    There is a minor backwards-incompatibility: old proof scripts using
-    the metric-related results in previous `topologyTheory` should now
-    open `metricTheory` instead. (Thanks to Chun Tian for this work.)
+*  `measureTheory`, `lebesgueTheory`, `martingaleTheory` and `probabilityTheory`:
+    the type of measure/probability has been upgraded
+    from `('a set) -> real` to `('a set) -> extreal`, better aligned with
+    modern textbooks. Many new theorems were added.
 
-*   Holmakefiles can now refer to the new variable `DEFAULT_TARGETS` in order to generate a list of the targets in the current directory that Holmake would attempt to build by default.
-    This provides an easier way to adjust makefiles than that suggested in the [release notes for Kananaskis-10](http://hol-theorem-prover.org/kananaskis-10.release.html).
+    There is a major backwards-incompatibility: old proof scripts
+    using real-valued measure and probability theory should now
+    instead open `sigma_algebraTheory`, `real_measureTheory`,
+    `real_borelTheory`, `real_lebesgueTheory` and `real_probabilityTheory`.
+
+*  `sigma_algebraTheory`: the pure set-theoretic theory of sigma-algebra
+    has been moved from `measureTheory` into a dedicated `sigma_algebraTheory`,
+    adding also some other system of sets (ring, semiring, and dynkin system).
+    This theory is now shared by both `measureTheory` and `real_measureTheory`.
+
+*  `borelTheory`: the extreal-based Borel space and Borel-measurable
+    sets is now moved from `measureTheory` into `borelTheory` with
+    many new theorems added.
+
+    There is a minor backwards-incompatibility: some old proof scripts using
+   `measureTheory` should now also open `sigma_algebraTheory` and `borelTheory`.
 
 New tools:
 ----------
 
+*  `holwrap.py`: a simple python script that 'wraps' hol in a similar fashion 
+    to rlwrap. Features include multiline input, history and basic StandardML
+    syntax highlighting. 
+    See the comments at the head of the script for usage instructions.
+
 New examples:
----------
+-------------
+
+*  __algebra__: an abstract algebra library for HOL4. The algebraic types
+    are generic, so the library is useful in general.
+    The algebraic structures consist of
+    `monoidTheory` for monoids with identity, `groupTheory` for groups,
+    `ringTheory` for commutative rings, `fieldTheory` for fields,
+    `polynomialTheory` for polynomials with coefficients from rings or fields,
+    `linearTheory` for vector spaces, including linear independence, and
+    `finitefieldTheory` for finite fields, including existence and uniqueness.
+
+*  __simple_complexity__: a simple theory of recurrence loops to assist the
+    computational complexity analysis of algorithms. The ingredients are
+    `bitsizeTheory` for the complexity measure using binary bits,
+    `complexityTheory` for the big-O complexity class,
+    and `loopTheory` for various recurrence loop patterns of iteration steps.
+
+*  __AKS__: the mechanisation of the AKS algorithm, contributed by Hing Lun Chan
+    from his PhD work.
+
+    The theory behind the AKS algorithm is delivered in __AKS/theories__,
+    starting with `AKSintroTheory`, the introspective relation,
+    culminating in `AKSimprovedTheory`, proving that the AKS algorithm is a primality test.
+    The underlying theories are based on finite fields, hence making use of
+    `finitefieldTheory` in __algebra__.
+
+    An implementation of the AKS algorithm is shown to execute in polynomial-time:
+    the pseudo-codes of subroutines are given in __AKS/compute__, and the corresponding
+    implementations in monadic style are given in __AKS/machine__, which includes a
+    simple machine model outlined in `countMonadTheory` and `countMacroTheory`.
+    Run-time analysis of subroutines is based on `loopTheory` in __simple_complexity__.
+
+    The AKS main theorems and proofs have been cleaned up in `AKScleanTheory`.
+    For details, please refer to his [PhD thesis](http://hdl.handle.net/1885/177195).
+
 
 Incompatibilities:
 ------------------
-
-*   The `term` type is now declared so that it is no longer what SML refers to as an “equality type”.
-    This means that SML code that attempts to use `=` or `<>` on types that include terms will now fail to compile.
-    Unlike in Haskell, we cannot redefine the behaviour of equality and must accept the SML implementation’s best guess as to what equality is.
-    Unfortunately, the SML equality on terms is *not* correct.
-    As has long been appreciated, it distinguishes `“λx.x”` and `“λy.y”`, which is bad enough.
-    However, in the standard kernel, where explicit substitutions may be present in a term representation, it can also distinguish terms that are not only semantically identical, but also even print the same.
-
-    This incompatibility will mostly affect people writing SML code.
-    If broken code is directly calling `=` on terms, the `~~` infix operator can be used instead (this is the tupled version of `aconv`).
-    Similarly, `<>` can be replaced by `!~`.
-    If broken code includes something like `expr <> NONE` and `expr` has type `term option`, then combinators from `Portable` for building equality tests should be used.
-    In particular, the above could be rewritten to
-
-           not (option_eq aconv expr NONE)
-
-    It is possible that a tool will want to compare terms for exact syntactic equality up to choice of bound names.
-    The `identical` function can be used for this.
-    Note that we strongly believe that uses of this function will only occur in very niche cases.
-    For example, it is used just twice in the distribution as of February 2019.
-
-    There are a number of term-specific helper functions defined in `boolLib` to help in writing specific cases.
-    For example
-
-           val memt : term list -> term -> bool
-           val goal_eq : (term list * term) -> (term list * term) -> bool
-           val tassoc : term -> (term * ‘a) list -> ‘a
-           val xtm_eq : (‘’a * term) -> (‘’a * term) -> bool
-
-*   The `Holmake` tool now behaves with the `--qof` behaviour enabled by default.
-    This means that script files which have a tactic failure occur will cause the building of the corresponding theory to fail, rather than having the build continue with the theorem “cheated”.
-    We think this will be less confusing for new users.
-    Experts who *do* want to have script files continue past such errors can use the `--noqof` option to enable the old behaviour.
-
-*   When running with Poly/ML, we now require at least version 5.7.0.
-
-*   The `type_abbrev` function now affects only the type parser.
-    The pretty-printer will not use the new abbreviation when printing types.
-    If the old behaviour of printing the abbreviations as well as parsing them is desired, the new entrypoint `type_abbrev_pp` should be used.
-
-*   The `Globals.priming` reference variable has been removed.
-    All priming done by the kernel is now by appending extra prime (apostrophe) characters to the names of variables.
-    This also means that this is the only form of variation introduced by the `variant` function.
-    However, there is also a new `numvariant` function, which makes the varying function behave as if the old `Globals.priming` was set to `SOME ""` (introduces and increments a numeric suffix).
 
 * * * * *
 
 <div class="footer">
 *[HOL4, ??????](http://hol-theorem-prover.org)*
 
-[Release notes for the previous version](kananaskis-12.release.html)
+[Release notes for the previous version](kananaskis-13.release.html)
 
 </div>

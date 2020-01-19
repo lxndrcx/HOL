@@ -88,7 +88,7 @@ val _ = add_rule {term_name = ",", fixity = Infixr 50,
 
 val PAIR_EQ = Q.store_thm
 ("PAIR_EQ",
- `((x,y) = (a,b)) = (x=a) /\ (y=b)`,
+ `((x,y) = (a,b)) <=> (x=a) /\ (y=b)`,
  EQ_TAC THENL
  [REWRITE_TAC[COMMA_DEF]
    THEN DISCH_THEN(MP_TAC o Q.AP_TERM `REP_prod`)
@@ -146,7 +146,7 @@ val _ = ot0 "SND" "snd"
 
 val PAIR_FST_SND_EQ = store_thm(
   "PAIR_FST_SND_EQ",
-  ``!(p:'a # 'b) q. (p = q) = (FST p = FST q) /\ (SND p = SND q)``,
+  ``!(p:'a # 'b) q. (p = q) <=> (FST p = FST q) /\ (SND p = SND q)``,
   REPEAT GEN_TAC THEN
   X_CHOOSE_THEN ``p1:'a`` (X_CHOOSE_THEN ``p2:'b`` SUBST_ALL_TAC)
                 (SPEC ``p:'a # 'b`` ABS_PAIR_THM) THEN
@@ -352,7 +352,7 @@ val PROD_ALL_MONO = store_thm(
 val _ = IndDefLib.export_mono "PROD_ALL_MONO"
 
 val PROD_ALL_CONG = store_thm(
-  "PROD_ALL_CONG[defncong]",
+  "PROD_ALL_CONG",
   ``!p p' P P' Q Q'.
       (p = p') /\ (!x:'a y:'b. (p' = (x,y)) ==> (P x <=> P' x)) /\
       (!x:'a y:'b. (p' = (x,y)) ==> (Q y <=> Q' y)) ==>
@@ -627,7 +627,7 @@ Q.new_infixr_definition
 
 val LEX_DEF_THM = Q.store_thm
 ("LEX_DEF_THM",
- `(R1 LEX R2) (a,b) (c,d) = R1 a c \/ (a = c) /\ R2 b d`,
+ `(R1 LEX R2) (a,b) (c,d) <=> R1 a c \/ (a = c) /\ R2 b d`,
   REWRITE_TAC [LEX_DEF,UNCURRY_DEF] THEN BETA_TAC THEN
   REWRITE_TAC [UNCURRY_DEF] THEN BETA_TAC THEN REFL_TAC);
 
@@ -738,8 +738,6 @@ val LEX_CONG = Q.store_thm
  Ho_Rewrite.REWRITE_TAC [LEX_DEF,FORALL_PROD,PAIR_EQ]
    THEN NTAC 2 (REWRITE_TAC [UNCURRY_VAR,FST,SND] THEN BETA_TAC)
    THEN METIS_TAC[]);
-
-val _ = DefnBase.export_cong "LEX_CONG";
 
 (*---------------------------------------------------------------------------
     Generate some ML that gets evaluated at theory load time.
